@@ -94,6 +94,68 @@ const convertTimeoutForPlatform = (
   connectionTimeout = Platform.OS === 'ios' ? DEFAULT_TIMEOUT_IOS : DEFAULT_TIMEOUT_ANDROID
 ) => (platform === 'android' ? connectionTimeout * SECOND_IN_MS : connectionTimeout);
 
+export const getAuthGateway = ({
+  issuer,
+  redirectUrl,
+  clientId,
+  clientSecret,
+  scopes,
+  useNonce = true,
+  usePKCE = true,
+  additionalParameters,
+  serviceConfiguration,
+  clientAuthMethod = 'basic',
+  dangerouslyAllowInsecureHttpRequests = false,
+  customHeaders,
+  additionalHeaders,
+  skipCodeExchange = false,
+  iosCustomBrowser = null,
+  androidAllowCustomBrowsers = null,
+  androidTrustedWebActivity = false,
+  connectionTimeoutSeconds,
+  iosPrefersEphemeralSession = false,
+}) => {
+  validateIssuerOrServiceConfigurationEndpoints(issuer, serviceConfiguration);
+  validateClientId(clientId);
+  validateRedirectUrl(redirectUrl);
+  validateHeaders(customHeaders);
+  validateAdditionalHeaders(additionalHeaders);
+  validateConnectionTimeoutSeconds(connectionTimeoutSeconds);
+  // TODO: validateAdditionalParameters
+
+  const nativeMethodArguments = [
+    issuer,
+    redirectUrl,
+    clientId,
+    clientSecret,
+    scopes,
+    additionalParameters,
+    serviceConfiguration,
+    skipCodeExchange,
+    convertTimeoutForPlatform(Platform.OS, connectionTimeoutSeconds),
+  ];
+
+  if (Platform.OS === 'android') {
+    nativeMethodArguments.push(useNonce);
+    nativeMethodArguments.push(usePKCE);
+    nativeMethodArguments.push(clientAuthMethod);
+    nativeMethodArguments.push(dangerouslyAllowInsecureHttpRequests);
+    nativeMethodArguments.push(customHeaders);
+    nativeMethodArguments.push(androidAllowCustomBrowsers);
+    nativeMethodArguments.push(androidTrustedWebActivity);
+  }
+
+  if (Platform.OS === 'ios') {
+    nativeMethodArguments.push(additionalHeaders);
+    nativeMethodArguments.push(useNonce);
+    nativeMethodArguments.push(usePKCE);
+    nativeMethodArguments.push(iosCustomBrowser);
+    nativeMethodArguments.push(iosPrefersEphemeralSession);
+  }
+
+  return RNAppAuth.getAuthGateway(...nativeMethodArguments);
+};
+
 export const prefetchConfiguration = async ({
   warmAndPrefetchChrome = false,
   issuer,

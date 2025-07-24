@@ -141,6 +141,14 @@ export interface EndSessionResult {
   state: string;
 }
 
+export interface AuthGateway {
+  url: string;
+  codeVerifier: string;
+  nonce: string;
+}
+
+export function getAuthGateway(config: AuthConfiguration): Promise<AuthGateway>;
+
 export function prefetchConfiguration(config: AuthConfiguration): Promise<void>;
 
 export function register(config: RegistrationConfiguration): Promise<RegistrationResponse>;
