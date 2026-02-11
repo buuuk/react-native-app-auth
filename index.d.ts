@@ -93,7 +93,7 @@ export type AuthConfiguration = BaseAuthConfiguration & {
 };
 
 export type AuthGatewayConfiguration = AuthConfiguration & {
-  returnAuthUrlOnly: true;
+  returnAuthGatewayOnly: true;
 }
 
 export type EndSessionConfiguration = BaseAuthConfiguration & {
@@ -157,7 +157,7 @@ export function register(config: RegistrationConfiguration): Promise<Registratio
 
 
 /**
- * If you pass returnAuthUrlOnly: true in config, the promise resolves to:
+ * If you pass returnAuthGatewayOnly: true in config, the promise resolves to:
  *   { url: string, codeVerifier: string, nonce: string }
  * Otherwise, it resolves to AuthorizeResult.
  */
