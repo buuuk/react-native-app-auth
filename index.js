@@ -214,6 +214,7 @@ export const authorize = ({
   androidTrustedWebActivity = false,
   connectionTimeoutSeconds,
   iosPrefersEphemeralSession = false,
+  returnAuthGatewayOnly = false,
 }) => {
   validateIssuerOrServiceConfigurationEndpoints(issuer, serviceConfiguration);
   validateClientId(clientId);
@@ -243,6 +244,7 @@ export const authorize = ({
     nativeMethodArguments.push(customHeaders);
     nativeMethodArguments.push(androidAllowCustomBrowsers);
     nativeMethodArguments.push(androidTrustedWebActivity);
+    nativeMethodArguments.push(returnAuthGatewayOnly);
   }
 
   if (Platform.OS === 'ios') {
@@ -251,71 +253,10 @@ export const authorize = ({
     nativeMethodArguments.push(usePKCE);
     nativeMethodArguments.push(iosCustomBrowser);
     nativeMethodArguments.push(iosPrefersEphemeralSession);
+    nativeMethodArguments.push(returnAuthGatewayOnly);
   }
 
   return RNAppAuth.authorize(...nativeMethodArguments);
-};
-
-export const getAuthGateway = ({
-  issuer,
-  redirectUrl,
-  clientId,
-  clientSecret,
-  scopes,
-  useNonce = true,
-  usePKCE = true,
-  additionalParameters,
-  serviceConfiguration,
-  clientAuthMethod = 'basic',
-  dangerouslyAllowInsecureHttpRequests = false,
-  customHeaders,
-  additionalHeaders,
-  skipCodeExchange = false,
-  iosCustomBrowser = null,
-  androidAllowCustomBrowsers = null,
-  androidTrustedWebActivity = false,
-  connectionTimeoutSeconds,
-  iosPrefersEphemeralSession = false,
-}) => {
-  validateIssuerOrServiceConfigurationEndpoints(issuer, serviceConfiguration);
-  validateClientId(clientId);
-  validateRedirectUrl(redirectUrl);
-  validateHeaders(customHeaders);
-  validateAdditionalHeaders(additionalHeaders);
-  validateConnectionTimeoutSeconds(connectionTimeoutSeconds);
-  // TODO: validateAdditionalParameters
-
-  const nativeMethodArguments = [
-    issuer,
-    redirectUrl,
-    clientId,
-    clientSecret,
-    scopes,
-    additionalParameters,
-    serviceConfiguration,
-    skipCodeExchange,
-    convertTimeoutForPlatform(Platform.OS, connectionTimeoutSeconds),
-  ];
-
-  if (Platform.OS === 'android') {
-    nativeMethodArguments.push(useNonce);
-    nativeMethodArguments.push(usePKCE);
-    nativeMethodArguments.push(clientAuthMethod);
-    nativeMethodArguments.push(dangerouslyAllowInsecureHttpRequests);
-    nativeMethodArguments.push(customHeaders);
-    nativeMethodArguments.push(androidAllowCustomBrowsers);
-    nativeMethodArguments.push(androidTrustedWebActivity);
-  }
-
-  if (Platform.OS === 'ios') {
-    nativeMethodArguments.push(additionalHeaders);
-    nativeMethodArguments.push(useNonce);
-    nativeMethodArguments.push(usePKCE);
-    nativeMethodArguments.push(iosCustomBrowser);
-    nativeMethodArguments.push(iosPrefersEphemeralSession);
-  }
-
-  return RNAppAuth.getAuthGateway(...nativeMethodArguments);
 };
 
 export const refresh = (

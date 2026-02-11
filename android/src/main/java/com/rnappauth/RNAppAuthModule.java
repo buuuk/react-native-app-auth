@@ -323,8 +323,8 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
     }
 
 
-    @ReactMethod
-    public void authorize(
+        @ReactMethod
+        public void authorize(
             String issuer,
             final String redirectUrl,
             final String clientId,
@@ -341,6 +341,7 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
             final ReadableMap customHeaders,
             final ReadableArray androidAllowCustomBrowsers,
             final boolean androidTrustedWebActivity,
+            final Boolean returnAuthGatewayOnly,
             final Promise promise) {
         this.parseHeaderMap(customHeaders);
         final ConnectionBuilder builder = createConnectionBuilder(dangerouslyAllowInsecureHttpRequests,
@@ -358,6 +359,57 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
         this.skipCodeExchange = skipCodeExchange;
         this.useNonce = useNonce;
         this.usePKCE = usePKCE;
+
+        // If returnAuthGatewayOnly is true, just build and return the auth URL and params
+        if (returnAuthGatewayOnly != null && returnAuthGatewayOnly) {
+            try {
+                final AuthorizationServiceConfiguration serviceConfig = hasServiceConfiguration(issuer)
+                        ? getServiceConfiguration(issuer)
+                        : createAuthorizationServiceConfiguration(serviceConfiguration);
+                AuthorizationRequest.Builder requestBuilder = new AuthorizationRequest.Builder(
+                        serviceConfig,
+                        clientId,
+                        ResponseTypeValues.CODE,
+                        Uri.parse(redirectUrl)
+                );
+                if (scopes != null) {
+                    String[] scopesArray = new String[scopes.size()];
+                    for (int i = 0; i < scopes.size(); i++) {
+                        scopesArray[i] = scopes.getString(i);
+                    }
+                    requestBuilder.setScopes(scopesArray);
+                }
+                if (additionalParametersMap != null) {
+                    requestBuilder.setAdditionalParameters(additionalParametersMap);
+                }
+                // PKCE
+                String codeVerifier = null;
+                if (usePKCE != null && usePKCE) {
+                    codeVerifier = CodeVerifierUtil.generateRandomCodeVerifier();
+                    requestBuilder.setCodeVerifier(codeVerifier);
+                }
+                // Nonce
+                String nonce = null;
+                if (useNonce != null && useNonce) {
+                    if (additionalParametersMap != null && additionalParametersMap.containsKey("nonce")) {
+                        nonce = additionalParametersMap.get("nonce");
+                        requestBuilder.setNonce(nonce);
+                    } else {
+                        nonce = java.util.UUID.randomUUID().toString();
+                        requestBuilder.setNonce(nonce);
+                    }
+                }
+                AuthorizationRequest request = requestBuilder.build();
+                WritableMap result = Arguments.createMap();
+                result.putString("url", request.toUri().toString());
+                result.putString("codeVerifier", codeVerifier != null ? codeVerifier : "");
+                result.putString("nonce", nonce != null ? nonce : "");
+                promise.resolve(result);
+            } catch (Exception e) {
+                promise.reject("build_auth_url_failed", e.getMessage());
+            }
+            return;
+        }
 
         // when serviceConfiguration is provided, we don't need to hit up the OpenID
         // well-known id endpoint
@@ -744,105 +796,6 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
         };
 
         authService.performRegistrationRequest(registrationRequest, registrationResponseCallback);
-    }
-
-    private void returnAuthGateway(
-        final AuthorizationServiceConfiguration serviceConfiguration,
-        final AppAuthConfiguration appAuthConfiguration,
-        final String clientId,
-        final ReadableArray scopes,
-        final String redirectUrl,
-        final Boolean useNonce,
-        final Boolean usePKCE,
-        final Map<String, String> additionalParametersMap,
-        final Boolean androidTrustedWebActivity) {
-
-        String scopesString = null;
-
-        if (scopes != null) {
-            scopesString = this.arrayToString(scopes);
-        }
-
-        final Context context = this.reactContext;
-
-        AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
-        serviceConfiguration,
-        clientId,
-        ResponseTypeValues.CODE,
-        Uri.parse(redirectUrl));
-
-        if (scopesString != null) {
-            authRequestBuilder.setScope(scopesString);
-        }
-
-        if (additionalParametersMap != null) {
-            // handle additional parameters separately to avoid exceptions from AppAuth
-            if (additionalParametersMap.containsKey("display")) {
-                authRequestBuilder.setDisplay(additionalParametersMap.get("display"));
-                additionalParametersMap.remove("display");
-            }
-            if (additionalParametersMap.containsKey("login_hint")) {
-                authRequestBuilder.setLoginHint(additionalParametersMap.get("login_hint"));
-                additionalParametersMap.remove("login_hint");
-            }
-            if (additionalParametersMap.containsKey("prompt")) {
-                authRequestBuilder.setPrompt(additionalParametersMap.get("prompt"));
-                additionalParametersMap.remove("prompt");
-            }
-            if (additionalParametersMap.containsKey("state")) {
-                authRequestBuilder.setState(additionalParametersMap.get("state"));
-                additionalParametersMap.remove("state");
-            }
-
-            if (additionalParametersMap.containsKey("nonce")) {
-                authRequestBuilder.setNonce(additionalParametersMap.get("nonce"));
-                additionalParametersMap.remove("nonce");
-
-            }
-            if (additionalParametersMap.containsKey("ui_locales")) {
-                authRequestBuilder.setUiLocales(additionalParametersMap.get("ui_locales"));
-                additionalParametersMap.remove("ui_locales");
-
-            }
-
-            authRequestBuilder.setAdditionalParameters(additionalParametersMap);
-        }
-
-        if (!usePKCE) {
-            authRequestBuilder.setCodeVerifier(null);
-            } else {
-            this.codeVerifier = CodeVerifierUtil.generateRandomCodeVerifier();
-            authRequestBuilder.setCodeVerifier(this.codeVerifier);
-            }
-
-            if (!useNonce) {
-            authRequestBuilder.setNonce(null);
-            }
-
-            AuthorizationRequest authRequest = authRequestBuilder.build();
-
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            AuthorizationService authService = new AuthorizationService(context, appAuthConfiguration);
-
-            CustomTabsIntent.Builder intentBuilder = authService.createCustomTabsIntentBuilder();
-            CustomTabsIntent customTabsIntent = intentBuilder.build();
-
-            if (androidTrustedWebActivity) {
-                customTabsIntent.intent.putExtra(TrustedWebUtils.EXTRA_LAUNCH_AS_TRUSTED_WEB_ACTIVITY, true);
-            }
-
-            authService.getAuthorizationRequestIntent(authRequest, customTabsIntent);
-            Uri uri = customTabsIntent.intent.getData();
-
-            WritableMap map = Arguments.createMap();
-            map.putString("url", uri.toString());
-            map.putString("codeVerifier", this.codeVerifier);
-            map.putString("nonce", authRequest.nonce);
-
-            this.promise.resolve(map);
-        } else {
-            this.promise.reject("unsupported", "Please use SDK larger than 21!");
-        }
     }
 
     /*
