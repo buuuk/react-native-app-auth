@@ -279,7 +279,8 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
                         useNonce,
                         usePKCE,
                         additionalParametersMap,
-                        androidTrustedWebActivity);
+                        androidTrustedWebActivity,
+                        returnAuthGatewayOnly);
             } catch (ActivityNotFoundException e) {
                 promise.reject("browser_not_found", e.getMessage());
             } catch (Exception e) {
