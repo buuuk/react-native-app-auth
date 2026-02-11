@@ -101,6 +101,7 @@ RCT_REMAP_METHOD(authorize,
                  usePKCE: (BOOL) usePKCE
                  iosCustomBrowser: (NSString *) iosCustomBrowser
                  prefersEphemeralSession: (BOOL) prefersEphemeralSession
+                 returnAuthGatewayOnly: (BOOL) returnAuthGatewayOnly
                  resolve: (RCTPromiseResolveBlock) resolve
                  reject: (RCTPromiseRejectBlock)  reject)
 {
@@ -117,9 +118,10 @@ RCT_REMAP_METHOD(authorize,
                                 useNonce: useNonce
                                  usePKCE: usePKCE
                     additionalParameters: additionalParameters
-                    skipCodeExchange: skipCodeExchange
+                        skipCodeExchange: skipCodeExchange
                         iosCustomBrowser: iosCustomBrowser
                  prefersEphemeralSession: prefersEphemeralSession
+                   returnAuthGatewayOnly: returnAuthGatewayOnly
                                  resolve: resolve
                                   reject: reject];
     } else {
@@ -141,6 +143,7 @@ RCT_REMAP_METHOD(authorize,
                                                                                 skipCodeExchange: skipCodeExchange
                                                                                 iosCustomBrowser: iosCustomBrowser
                                                                          prefersEphemeralSession: prefersEphemeralSession
+                                                                           returnAuthGatewayOnly: returnAuthGatewayOnly
                                                                                          resolve: resolve
                                                                                           reject: reject];
                                                             }];
