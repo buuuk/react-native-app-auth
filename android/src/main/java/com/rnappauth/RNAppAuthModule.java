@@ -226,7 +226,6 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
         }
     }
 
-
     @ReactMethod
     public void authorize(
             String issuer,
@@ -263,57 +262,6 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
         this.skipCodeExchange = skipCodeExchange;
         this.useNonce = useNonce;
         this.usePKCE = usePKCE;
-
-        // If returnAuthGatewayOnly is true, just build and return the auth URL and params
-        if (returnAuthGatewayOnly != null && returnAuthGatewayOnly) {
-            try {
-                final AuthorizationServiceConfiguration serviceConfig = hasServiceConfiguration(issuer)
-                        ? getServiceConfiguration(issuer)
-                        : createAuthorizationServiceConfiguration(serviceConfiguration);
-                AuthorizationRequest.Builder requestBuilder = new AuthorizationRequest.Builder(
-                        serviceConfig,
-                        clientId,
-                        ResponseTypeValues.CODE,
-                        Uri.parse(redirectUrl)
-                );
-                if (scopes != null) {
-                    String[] scopesArray = new String[scopes.size()];
-                    for (int i = 0; i < scopes.size(); i++) {
-                        scopesArray[i] = scopes.getString(i);
-                    }
-                    requestBuilder.setScopes(scopesArray);
-                }
-                if (additionalParametersMap != null) {
-                    requestBuilder.setAdditionalParameters(additionalParametersMap);
-                }
-                // PKCE
-                String codeVerifier = null;
-                if (usePKCE != null && usePKCE) {
-                    codeVerifier = CodeVerifierUtil.generateRandomCodeVerifier();
-                    requestBuilder.setCodeVerifier(codeVerifier);
-                }
-                // Nonce
-                String nonce = null;
-                if (useNonce != null && useNonce) {
-                    if (additionalParametersMap != null && additionalParametersMap.containsKey("nonce")) {
-                        nonce = additionalParametersMap.get("nonce");
-                        requestBuilder.setNonce(nonce);
-                    } else {
-                        nonce = java.util.UUID.randomUUID().toString();
-                        requestBuilder.setNonce(nonce);
-                    }
-                }
-                AuthorizationRequest request = requestBuilder.build();
-                WritableMap result = Arguments.createMap();
-                result.putString("url", request.toUri().toString());
-                result.putString("codeVerifier", codeVerifier != null ? codeVerifier : "");
-                result.putString("nonce", nonce != null ? nonce : "");
-                promise.resolve(result);
-            } catch (Exception e) {
-                promise.reject("build_auth_url_failed", e.getMessage());
-            }
-            return;
-        }
 
         // when serviceConfiguration is provided, we don't need to hit up the OpenID
         // well-known id endpoint
@@ -362,7 +310,8 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
                                         useNonce,
                                         usePKCE,
                                         additionalParametersMap,
-                                        androidTrustedWebActivity);
+                                        androidTrustedWebActivity,
+                                        returnAuthGatewayOnly);
                             } catch (ActivityNotFoundException e) {
                                 promise.reject("browser_not_found", e.getMessage());
                             } catch (Exception e) {
@@ -714,7 +663,8 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
             final Boolean useNonce,
             final Boolean usePKCE,
             final Map<String, String> additionalParametersMap,
-            final Boolean androidTrustedWebActivity) {
+            final Boolean androidTrustedWebActivity
+            final Boolean returnAuthGatewayOnly) {
 
         String scopesString = null;
 
@@ -792,6 +742,15 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
             }
 
             Intent authIntent = authService.getAuthorizationRequestIntent(authRequest, customTabsIntent);
+
+            if (returnAuthGatewayOnly) {
+                Uri uri = customTabsIntent.intent.getData();
+                WritableMap map = Arguments.createMap();
+                map.putString("url", uri.toString());
+                map.putString("codeVerifier", this.codeVerifier);
+                map.putString("nonce", authRequest.nonce);
+                return;
+            }
 
             currentActivity.startActivityForResult(authIntent, 52);
         } else {

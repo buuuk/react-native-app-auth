@@ -86,7 +86,6 @@ RCT_REMAP_METHOD(register,
     }
 } // end RCT_REMAP_METHOD(register,
 
-
 RCT_REMAP_METHOD(authorize,
                  issuer: (NSString *) issuer
                  redirectUrl: (NSString *) redirectUrl
@@ -102,39 +101,14 @@ RCT_REMAP_METHOD(authorize,
                  usePKCE: (BOOL) usePKCE
                  iosCustomBrowser: (NSString *) iosCustomBrowser
                  prefersEphemeralSession: (BOOL) prefersEphemeralSession
-                 returnAuthGatewayOnly: (BOOL) returnAuthGatewayOnly
                  resolve: (RCTPromiseResolveBlock) resolve
                  reject: (RCTPromiseRejectBlock)  reject)
 {
     [self configureUrlSession:additionalHeaders sessionTimeout:connectionTimeoutSeconds];
 
-    void (^handleAuthorize)(OIDServiceConfiguration *) = ^(OIDServiceConfiguration *configuration) {
-        if (returnAuthGatewayOnly) {
-            NSString *codeVerifier = usePKCE ? [[self class] generateCodeVerifier] : nil;
-            NSString *codeChallenge = usePKCE ? [[self class] codeChallengeS256ForVerifier:codeVerifier] : nil;
-            NSString *nonce =  useNonce ? additionalParameters[@"nonce"]? additionalParameters[@"nonce"]:  [[self class] generateState] : nil ;
-            OIDAuthorizationRequest *request =
-            [[OIDAuthorizationRequest alloc] initWithConfiguration:configuration
-                                                          clientId:clientId
-                                                     clientSecret:clientSecret
-                                                             scope:[OIDScopeUtilities scopesWithArray:scopes]
-                                                       redirectURL:[NSURL URLWithString:redirectUrl]
-                                                      responseType:OIDResponseTypeCode
-                                                             state: additionalParameters[@"state"] ? additionalParameters[@"state"] : [[self class] generateState]
-                                                             nonce:nonce
-                                                      codeVerifier:codeVerifier
-                                                     codeChallenge:codeChallenge
-                                               codeChallengeMethod: usePKCE ? OIDOAuthorizationRequestCodeChallengeMethodS256 : nil
-                                              additionalParameters:additionalParameters];
-            NSURL *authorizationRequestURL = [request authorizationRequestURL];
-            resolve(@{
-                @"url": authorizationRequestURL.absoluteString,
-                @"state": request.state,
-                @"codeVerifier": codeVerifier ? codeVerifier : @"",
-                @"nonce": nonce ? nonce : @""
-            });
-            return;
-        }
+    // if we have manually provided configuration, we can use it and skip the OIDC well-known discovery endpoint call
+    if (serviceConfiguration) {
+        OIDServiceConfiguration *configuration = [self createServiceConfiguration:serviceConfiguration];
         [self authorizeWithConfiguration: configuration
                              redirectUrl: redirectUrl
                                 clientId: clientId
@@ -148,11 +122,6 @@ RCT_REMAP_METHOD(authorize,
                  prefersEphemeralSession: prefersEphemeralSession
                                  resolve: resolve
                                   reject: reject];
-    };
-
-    if (serviceConfiguration) {
-        OIDServiceConfiguration *configuration = [self createServiceConfiguration:serviceConfiguration];
-        handleAuthorize(configuration);
     } else {
         [OIDAuthorizationService discoverServiceConfigurationForIssuer:[NSURL URLWithString:issuer]
                                                             completion:^(OIDServiceConfiguration *_Nullable configuration, NSError *_Nullable error) {
@@ -160,7 +129,20 @@ RCT_REMAP_METHOD(authorize,
                                                                     reject(@"service_configuration_fetch_error", [error localizedDescription], error);
                                                                     return;
                                                                 }
-                                                                handleAuthorize(configuration);
+                                                                [self authorizeWithConfiguration: configuration
+                                                                 
+                                                                                     redirectUrl: redirectUrl
+                                                                                        clientId: clientId
+                                                                                    clientSecret: clientSecret
+                                                                                          scopes: scopes
+                                                                                        useNonce: useNonce
+                                                                                         usePKCE: usePKCE
+                                                                            additionalParameters: additionalParameters
+                                                                                skipCodeExchange: skipCodeExchange
+                                                                                iosCustomBrowser: iosCustomBrowser
+                                                                         prefersEphemeralSession: prefersEphemeralSession
+                                                                                         resolve: resolve
+                                                                                          reject: reject];
                                                             }];
     }
 } // end RCT_REMAP_METHOD(authorize,
@@ -335,35 +317,31 @@ RCT_REMAP_METHOD(logout,
                                             }];
 }
 
-    
-
 /*
  * Authorize a user in exchange for a token with provided OIDServiceConfiguration
  */
 - (void)authorizeWithConfiguration: (OIDServiceConfiguration *) configuration
-                       redirectUrl: (NSString *) redirectUrl
-                          clientId: (NSString *) clientId
-                      clientSecret: (NSString *) clientSecret
-                            scopes: (NSArray *) scopes
-                          useNonce: (BOOL) useNonce
-                           usePKCE: (BOOL) usePKCE
-              additionalParameters: (NSDictionary *_Nullable) additionalParameters
-              skipCodeExchange: (BOOL) skipCodeExchange
-                  iosCustomBrowser: (NSString *) iosCustomBrowser
-           prefersEphemeralSession: (BOOL) prefersEphemeralSession
-                           resolve: (RCTPromiseResolveBlock) resolve
-                            reject: (RCTPromiseRejectBlock)  reject
+                                             redirectUrl: (NSString *) redirectUrl
+                                                    clientId: (NSString *) clientId
+                                            clientSecret: (NSString *) clientSecret
+                                                        scopes: (NSArray *) scopes
+                                                    useNonce: (BOOL) useNonce
+                                                     usePKCE: (BOOL) usePKCE
+                            additionalParameters: (NSDictionary *_Nullable) additionalParameters
+                            skipCodeExchange: (BOOL) skipCodeExchange
+                                    iosCustomBrowser: (NSString *) iosCustomBrowser
+                     prefersEphemeralSession: (BOOL) prefersEphemeralSession
+                                    returnAuthGatewayOnly: (BOOL) returnAuthGatewayOnly
+                                                     resolve: (RCTPromiseResolveBlock) resolve
+                                                        reject: (RCTPromiseRejectBlock)  reject
 {
-
     NSString *codeVerifier = usePKCE ? [[self class] generateCodeVerifier] : nil;
     NSString *codeChallenge = usePKCE ? [[self class] codeChallengeS256ForVerifier:codeVerifier] : nil;
     NSString *nonce =  useNonce ? additionalParameters[@"nonce"]? additionalParameters[@"nonce"]:  [[self class] generateState] : nil ;
 
-    // builds authentication request
     OIDAuthorizationRequest *request =
     [[OIDAuthorizationRequest alloc] initWithConfiguration:configuration
                                                   clientId:clientId
-     
                                               clientSecret:clientSecret
                                                      scope:[OIDScopeUtilities scopesWithArray:scopes]
                                                redirectURL:[NSURL URLWithString:redirectUrl]
@@ -398,17 +376,31 @@ RCT_REMAP_METHOD(logout,
 #endif
     
     OIDAuthorizationCallback callback = ^(OIDAuthorizationResponse *_Nullable authorizationResponse, NSError *_Nullable error) {
-                                                   typeof(self) strongSelf = weakSelf;
-                                                   strongSelf->_currentSession = nil;
-                                                   [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
-                                                   rnAppAuthTaskId = UIBackgroundTaskInvalid;
-                                                   if (authorizationResponse) {
-                                                       resolve([self formatAuthorizationResponse:authorizationResponse withCodeVerifier:codeVerifier]);
-                                                   } else {
-                                                       reject([self getErrorCode: error defaultCode:@"authentication_failed"],
-                                                              [self getErrorMessage: error], error);
-                                                   }
-                                               };
+        typeof(self) strongSelf = weakSelf;
+        strongSelf->_currentSession = nil;
+        [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
+        rnAppAuthTaskId = UIBackgroundTaskInvalid;
+        if (authorizationResponse) {
+            if (returnAuthGatewayOnly) {
+                OIDAuthorizationRequest *authRequest = authorizationResponse.request;
+                NSString *urlString = authRequest ? [[authRequest authorizationRequestURL] absoluteString] : @"";
+                NSString *stateValue = authorizationResponse.state ? authorizationResponse.state : @"";
+                NSString *codeVerifierValue = authRequest.codeVerifier ? authRequest.codeVerifier : @"";
+                NSString *nonceValue = authRequest.nonce ? authRequest.nonce : @"";
+                resolve(@{
+                    @"url": urlString,
+                    @"state": stateValue,
+                    @"codeVerifier": codeVerifierValue,
+                    @"nonce": nonceValue
+                });
+            } else {
+                resolve([self formatAuthorizationResponse:authorizationResponse withCodeVerifier:codeVerifier]);
+            }
+        } else {
+            reject([self getErrorCode: error defaultCode:@"authentication_failed"],
+                   [self getErrorMessage: error], error);
+        }
+    };
 
     if (skipCodeExchange) {
         
