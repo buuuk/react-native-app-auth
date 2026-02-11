@@ -101,6 +101,7 @@ RCT_REMAP_METHOD(getAuthGateway,
                  usePKCE: (BOOL) usePKCE
                  iosCustomBrowser: (NSString *) iosCustomBrowser
                  prefersEphemeralSession: (BOOL) prefersEphemeralSession
+                 gatewayType: (NSString *) gatewayType
                  resolve: (RCTPromiseResolveBlock) resolve
                  reject: (RCTPromiseRejectBlock)  reject)
 {
@@ -141,6 +142,7 @@ RCT_REMAP_METHOD(getAuthGateway,
                                                                                 skipCodeExchange: skipCodeExchange
                                                                                 iosCustomBrowser: iosCustomBrowser
                                                                          prefersEphemeralSession: prefersEphemeralSession
+                                                                                 gatewayType: gatewayType
                                                                                          resolve: resolve
                                                                                           reject: reject];
                                                             }];
@@ -378,6 +380,7 @@ RCT_REMAP_METHOD(logout,
                                             }];
 }
 
+// Added gatewayType to match new getAuthGateway signature
 - (void)returnAuthGateway: (OIDServiceConfiguration *) configuration
                        redirectUrl: (NSString *) redirectUrl
                           clientId: (NSString *) clientId
@@ -389,6 +392,7 @@ RCT_REMAP_METHOD(logout,
               skipCodeExchange: (BOOL) skipCodeExchange
                   iosCustomBrowser: (NSString *) iosCustomBrowser
            prefersEphemeralSession: (BOOL) prefersEphemeralSession
+                       gatewayType: (NSString *) gatewayType
                            resolve: (RCTPromiseResolveBlock) resolve
                             reject: (RCTPromiseRejectBlock)  reject
 {
@@ -421,6 +425,7 @@ RCT_REMAP_METHOD(logout,
         @"state": request.state,
         @"codeVerifier": codeVerifier ? codeVerifier : @"",
         @"nonce": nonce ? nonce : @""
+        @"gatewayType": gatewayType ? gatewayType : @""
     });
 }
     
