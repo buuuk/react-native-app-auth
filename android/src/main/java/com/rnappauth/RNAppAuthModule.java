@@ -663,7 +663,7 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
             final Boolean useNonce,
             final Boolean usePKCE,
             final Map<String, String> additionalParametersMap,
-            final Boolean androidTrustedWebActivity
+            final Boolean androidTrustedWebActivity,
             final Boolean returnAuthGatewayOnly) {
 
         String scopesString = null;
