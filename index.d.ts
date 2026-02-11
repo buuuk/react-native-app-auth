@@ -92,6 +92,10 @@ export type AuthConfiguration = BaseAuthConfiguration & {
   iosPrefersEphemeralSession?: boolean;
 };
 
+export type AuthGatewayConfiguration = AuthConfiguration & {
+  returnAuthUrlOnly: true;
+}
+
 export type EndSessionConfiguration = BaseAuthConfiguration & {
   additionalParameters?: { [name: string]: string };
   dangerouslyAllowInsecureHttpRequests?: boolean;
@@ -157,7 +161,7 @@ export function register(config: RegistrationConfiguration): Promise<Registratio
  *   { url: string, codeVerifier: string, nonce: string }
  * Otherwise, it resolves to AuthorizeResult.
  */
-export function authorize(config: AuthConfiguration & { returnAuthUrlOnly: true }): Promise<AuthGateway>;
+export function authorize(config: AuthGatewayConfiguration): Promise<AuthGateway>;
 export function authorize(config: AuthConfiguration): Promise<AuthorizeResult>;
 
 export function refresh(
