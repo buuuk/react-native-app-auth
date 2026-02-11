@@ -145,7 +145,7 @@ RCT_REMAP_METHOD(getAuthGateway,
                                                                                           reject: reject];
                                                             }];
     }
-}
+}// end RCT_REMAP_METHOD(getAuthGateway,
 
 RCT_REMAP_METHOD(authorize,
                  issuer: (NSString *) issuer
@@ -413,34 +413,15 @@ RCT_REMAP_METHOD(logout,
                                        codeChallengeMethod: usePKCE ? OIDOAuthorizationRequestCodeChallengeMethodS256 : nil
                                       additionalParameters:additionalParameters];
     
-    // performs authentication request
-    id<UIApplicationDelegate, RNAppAuthAuthorizationFlowManager> appDelegate = (id<UIApplicationDelegate, RNAppAuthAuthorizationFlowManager>)[UIApplication sharedApplication].delegate;
-    if (![[appDelegate class] conformsToProtocol:@protocol(RNAppAuthAuthorizationFlowManager)]) {
-        [NSException raise:@"RNAppAuth Missing protocol conformance"
-                    format:@"%@ does not conform to RNAppAuthAuthorizationFlowManager", appDelegate];
-    }
-    appDelegate.authorizationFlowManagerDelegate = self;
-    __weak typeof(self) weakSelf = self;
+    // Return the authorization URL and parameters
+    NSURL *authorizationRequestURL = [request authorizationRequestURL];
     
-    rnAppAuthTaskId = [UIApplication.sharedApplication beginBackgroundTaskWithExpirationHandler:^{
-        [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
-        rnAppAuthTaskId = UIBackgroundTaskInvalid;
-    }];
-    
-    UIViewController *presentingViewController = appDelegate.window.rootViewController.view.window ? appDelegate.window.rootViewController : appDelegate.window.rootViewController.presentedViewController;
-    
-    OIDAuthorizationCallback callback = ^(OIDAuthorizationResponse *_Nullable authorizationResponse, NSError *_Nullable error) {
-        typeof(self) strongSelf = weakSelf;
-        strongSelf->_currentSession = nil;
-        [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
-        rnAppAuthTaskId = UIBackgroundTaskInvalid;
-        if (authorizationResponse) {
-            resolve([self formatAuthorizationResponse:authorizationResponse withCodeVerifier:codeVerifier]);
-        } else {
-            reject([self getErrorCode: error defaultCode:@"authentication_failed"],
-                   [self getErrorMessage: error], error);
-        }
-    };
+    resolve(@{
+        @"url": authorizationRequestURL.absoluteString,
+        @"state": request.state,
+        @"codeVerifier": codeVerifier ? codeVerifier : @"",
+        @"nonce": nonce ? nonce : @""
+    });
 }
     
 
