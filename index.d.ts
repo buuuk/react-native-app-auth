@@ -151,9 +151,14 @@ export function prefetchConfiguration(config: AuthConfiguration): Promise<void>;
 
 export function register(config: RegistrationConfiguration): Promise<RegistrationResponse>;
 
-export function authorize(config: AuthConfiguration): Promise<AuthorizeResult>;
 
-export function getAuthGateway(config: AuthConfiguration): Promise<AuthGateway>;
+/**
+ * If you pass returnAuthUrlOnly: true in config, the promise resolves to:
+ *   { url: string, codeVerifier: string, nonce: string }
+ * Otherwise, it resolves to AuthorizeResult.
+ */
+export function authorize(config: AuthConfiguration & { returnAuthUrlOnly: true }): Promise<AuthGateway>;
+export function authorize(config: AuthConfiguration): Promise<AuthorizeResult>;
 
 export function refresh(
   config: AuthConfiguration,
