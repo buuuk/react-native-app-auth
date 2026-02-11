@@ -424,7 +424,7 @@ RCT_REMAP_METHOD(logout,
         @"url": authorizationRequestURL.absoluteString,
         @"state": request.state,
         @"codeVerifier": codeVerifier ? codeVerifier : @"",
-        @"nonce": nonce ? nonce : @""
+        @"nonce": nonce ? nonce : @"",
         @"gatewayType": gatewayType ? gatewayType : @""
     });
 }
