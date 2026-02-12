@@ -93,7 +93,7 @@ export type AuthConfiguration = BaseAuthConfiguration & {
 };
 
 export type AuthGatewayConfiguration = AuthConfiguration & {
-  returnAuthGatewayOnly: true;
+  returnAuthGatewayOnly?: true;
 }
 
 export type EndSessionConfiguration = BaseAuthConfiguration & {
