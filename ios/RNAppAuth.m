@@ -101,7 +101,6 @@ RCT_REMAP_METHOD(authorize,
                  usePKCE: (BOOL) usePKCE
                  iosCustomBrowser: (NSString *) iosCustomBrowser
                  prefersEphemeralSession: (BOOL) prefersEphemeralSession
-                 returnAuthGatewayOnly: (BOOL) returnAuthGatewayOnly
                  resolve: (RCTPromiseResolveBlock) resolve
                  reject: (RCTPromiseRejectBlock)  reject)
 {
@@ -118,10 +117,9 @@ RCT_REMAP_METHOD(authorize,
                                 useNonce: useNonce
                                  usePKCE: usePKCE
                     additionalParameters: additionalParameters
-                        skipCodeExchange: skipCodeExchange
+                    skipCodeExchange: skipCodeExchange
                         iosCustomBrowser: iosCustomBrowser
                  prefersEphemeralSession: prefersEphemeralSession
-                   returnAuthGatewayOnly: returnAuthGatewayOnly
                                  resolve: resolve
                                   reject: reject];
     } else {
@@ -143,7 +141,6 @@ RCT_REMAP_METHOD(authorize,
                                                                                 skipCodeExchange: skipCodeExchange
                                                                                 iosCustomBrowser: iosCustomBrowser
                                                                          prefersEphemeralSession: prefersEphemeralSession
-                                                                           returnAuthGatewayOnly: returnAuthGatewayOnly
                                                                                          resolve: resolve
                                                                                           reject: reject];
                                                             }];
@@ -318,33 +315,35 @@ RCT_REMAP_METHOD(logout,
                                                             [self getErrorMessage: error], error);
                                                  }
                                             }];
-}
+}   
 
 /*
  * Authorize a user in exchange for a token with provided OIDServiceConfiguration
  */
 - (void)authorizeWithConfiguration: (OIDServiceConfiguration *) configuration
-                                             redirectUrl: (NSString *) redirectUrl
-                                                    clientId: (NSString *) clientId
-                                            clientSecret: (NSString *) clientSecret
-                                                        scopes: (NSArray *) scopes
-                                                    useNonce: (BOOL) useNonce
-                                                     usePKCE: (BOOL) usePKCE
-                            additionalParameters: (NSDictionary *_Nullable) additionalParameters
-                            skipCodeExchange: (BOOL) skipCodeExchange
-                                    iosCustomBrowser: (NSString *) iosCustomBrowser
-                     prefersEphemeralSession: (BOOL) prefersEphemeralSession
-                                    returnAuthGatewayOnly: (BOOL) returnAuthGatewayOnly
-                                                     resolve: (RCTPromiseResolveBlock) resolve
-                                                        reject: (RCTPromiseRejectBlock)  reject
+                       redirectUrl: (NSString *) redirectUrl
+                          clientId: (NSString *) clientId
+                      clientSecret: (NSString *) clientSecret
+                            scopes: (NSArray *) scopes
+                          useNonce: (BOOL) useNonce
+                           usePKCE: (BOOL) usePKCE
+              additionalParameters: (NSDictionary *_Nullable) additionalParameters
+              skipCodeExchange: (BOOL) skipCodeExchange
+                  iosCustomBrowser: (NSString *) iosCustomBrowser
+           prefersEphemeralSession: (BOOL) prefersEphemeralSession
+                           resolve: (RCTPromiseResolveBlock) resolve
+                            reject: (RCTPromiseRejectBlock)  reject
 {
+
     NSString *codeVerifier = usePKCE ? [[self class] generateCodeVerifier] : nil;
     NSString *codeChallenge = usePKCE ? [[self class] codeChallengeS256ForVerifier:codeVerifier] : nil;
     NSString *nonce =  useNonce ? additionalParameters[@"nonce"]? additionalParameters[@"nonce"]:  [[self class] generateState] : nil ;
 
+    // builds authentication request
     OIDAuthorizationRequest *request =
     [[OIDAuthorizationRequest alloc] initWithConfiguration:configuration
                                                   clientId:clientId
+     
                                               clientSecret:clientSecret
                                                      scope:[OIDScopeUtilities scopesWithArray:scopes]
                                                redirectURL:[NSURL URLWithString:redirectUrl]
@@ -379,31 +378,17 @@ RCT_REMAP_METHOD(logout,
 #endif
     
     OIDAuthorizationCallback callback = ^(OIDAuthorizationResponse *_Nullable authorizationResponse, NSError *_Nullable error) {
-        typeof(self) strongSelf = weakSelf;
-        strongSelf->_currentSession = nil;
-        [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
-        rnAppAuthTaskId = UIBackgroundTaskInvalid;
-        if (authorizationResponse) {
-            if (returnAuthGatewayOnly) {
-                OIDAuthorizationRequest *authRequest = authorizationResponse.request;
-                NSString *urlString = authRequest ? [[authRequest authorizationRequestURL] absoluteString] : @"";
-                NSString *stateValue = authorizationResponse.state ? authorizationResponse.state : @"";
-                NSString *codeVerifierValue = authRequest.codeVerifier ? authRequest.codeVerifier : @"";
-                NSString *nonceValue = authRequest.nonce ? authRequest.nonce : @"";
-                resolve(@{
-                    @"url": urlString,
-                    @"state": stateValue,
-                    @"codeVerifier": codeVerifierValue,
-                    @"nonce": nonceValue
-                });
-            } else {
-                resolve([self formatAuthorizationResponse:authorizationResponse withCodeVerifier:codeVerifier]);
-            }
-        } else {
-            reject([self getErrorCode: error defaultCode:@"authentication_failed"],
-                   [self getErrorMessage: error], error);
-        }
-    };
+                                                   typeof(self) strongSelf = weakSelf;
+                                                   strongSelf->_currentSession = nil;
+                                                   [UIApplication.sharedApplication endBackgroundTask:rnAppAuthTaskId];
+                                                   rnAppAuthTaskId = UIBackgroundTaskInvalid;
+                                                   if (authorizationResponse) {
+                                                       resolve([self formatAuthorizationResponse:authorizationResponse withCodeVerifier:codeVerifier]);
+                                                   } else {
+                                                       reject([self getErrorCode: error defaultCode:@"authentication_failed"],
+                                                              [self getErrorMessage: error], error);
+                                                   }
+                                               };
 
     if (skipCodeExchange) {
         
