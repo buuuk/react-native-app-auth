@@ -253,7 +253,6 @@ export const authorize = ({
     nativeMethodArguments.push(usePKCE);
     nativeMethodArguments.push(iosCustomBrowser);
     nativeMethodArguments.push(iosPrefersEphemeralSession);
-    nativeMethodArguments.push(returnAuthGatewayOnly);
   }
 
   return RNAppAuth.authorize(...nativeMethodArguments);
